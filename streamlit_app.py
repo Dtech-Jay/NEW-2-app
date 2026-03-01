@@ -98,10 +98,25 @@ if st.button("Predict Total Revenue"):
     # Reorder columns exactly as training
     processed_input = processed_input[expected_features]
 
-    # --------------------------------------------------
-    # 6. Scale and Predict
-    # --------------------------------------------------
-    scaled_input = scaler.transform(processed_input)
-    prediction = model.predict(scaled_input)[0]
+   # --------------------------------------------------
+# 6. FINAL ALIGNMENT WITH MODEL (CRITICAL FIX)
+# --------------------------------------------------
 
-    st.success(f"Predicted Total Revenue: ₹ {prediction:,.2f}")
+# Get features expected by the model
+expected_model_features = model.n_features_in_
+
+# Convert scaled input to DataFrame to control columns
+scaled_df = pd.DataFrame(
+    scaled_input,
+    columns=scaler.feature_names_in_
+)
+
+# If model was trained on fewer features than scaler
+if scaled_df.shape[1] != expected_model_features:
+    scaled_df = scaled_df.iloc[:, :expected_model_features]
+
+# Convert back to numpy for prediction
+final_input = scaled_df.values
+
+# Predict
+prediction = model.predict(final_input)[0]
