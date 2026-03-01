@@ -48,7 +48,9 @@ payment_method = st.selectbox(
 # --------------------------------------------------
 if st.button("Predict Total Revenue"):
 
-    # ---- Create raw input dataframe ----
+    # -----------------------------
+    # 1. Raw input DataFrame
+    # -----------------------------
     input_df = pd.DataFrame({
         "price": [price],
         "discount_percent": [discount_percent],
@@ -61,16 +63,20 @@ if st.button("Predict Total Revenue"):
         "payment_method": [payment_method]
     })
 
-    # ---- Encode categorical features ----
+    # -----------------------------
+    # 2. Encode categorical features
+    # -----------------------------
     categorical_cols = ["product_category", "customer_region", "payment_method"]
-    encoded_array = encoder.transform(input_df[categorical_cols])
 
+    encoded_array = encoder.transform(input_df[categorical_cols])
     encoded_df = pd.DataFrame(
         encoded_array,
         columns=encoder.get_feature_names_out(categorical_cols)
     )
 
-    # ---- Combine numerical + encoded features ----
+    # -----------------------------
+    # 3. Combine numerical + encoded
+    # -----------------------------
     numerical_cols = [
         "price",
         "discount_percent",
@@ -85,38 +91,32 @@ if st.button("Predict Total Revenue"):
         axis=1
     )
 
-    # --------------------------------------------------
-    # 5. ALIGN FEATURES WITH SCALER (MOST IMPORTANT FIX)
-    # --------------------------------------------------
+    # -----------------------------
+    # 4. Align with scaler features
+    # -----------------------------
     expected_features = list(scaler.feature_names_in_)
 
-    # Add missing columns (if any)
     for col in expected_features:
         if col not in processed_input.columns:
             processed_input[col] = 0
 
-    # Reorder columns exactly as training
     processed_input = processed_input[expected_features]
 
-   # --------------------------------------------------
-# 6. FINAL ALIGNMENT WITH MODEL (CRITICAL FIX)
-# --------------------------------------------------
+    # -----------------------------
+    # 5. SCALE INPUT  ✅ (THIS WAS MISSING)
+    # -----------------------------
+    scaled_input = scaler.transform(processed_input)
 
-# Get features expected by the model
-expected_model_features = model.n_features_in_
+    # -----------------------------
+    # 6. Align with model features
+    # -----------------------------
+    if scaled_input.shape[1] != model.n_features_in_:
+        scaled_input = scaled_input[:, :model.n_features_in_]
 
-# Convert scaled input to DataFrame to control columns
-scaled_df = pd.DataFrame(
-    scaled_input,
-    columns=scaler.feature_names_in_
-)
+    # -----------------------------
+    # 7. Predict
+    # -----------------------------
+    prediction = model.predict(scaled_input)[0]
 
-# If model was trained on fewer features than scaler
-if scaled_df.shape[1] != expected_model_features:
-    scaled_df = scaled_df.iloc[:, :expected_model_features]
-
-# Convert back to numpy for prediction
-final_input = scaled_df.values
-
-# Predict
-prediction = model.predict(final_input)[0]
+    st.success(f"Predicted Total Revenue: ₹ {prediction:,.2f}")
+  
